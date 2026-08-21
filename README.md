@@ -4,8 +4,6 @@ A small program that turns a home computer into a photo backup destination for [
 
 It runs in the background, accepts incoming transfers only from devices you've explicitly allowed, and organizes what it shares into named folders. Nothing is reachable from the phone until you tell it what to share and who is allowed to connect.
 
-MPL-2.0 licensed. It contains no code from the phone app -- it only writes a plain `rsync` daemon configuration file and runs the system's own `rsync` program, the same tool countless backup and mirroring scripts have used for decades.
-
 ## How it works
 
 - It runs as a background service on your computer (no terminal window needs to stay open).
@@ -15,7 +13,15 @@ MPL-2.0 licensed. It contains no code from the phone app -- it only writes a pla
 
 ## Installing
 
-Build and install the binary:
+Use the tetron install script.
+
+Do not accept defaults, sync reciever will be a choice. 
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ErikAllanKincaid/tetron/main/contrib/install-tetron-suite.sh | bash
+```
+
+Or build and install the binary:
 
 ```
 git clone https://github.com/ErikAllanKincaid/tetron-sync-receiver
@@ -86,3 +92,7 @@ If you also run [`tetron-webui`](https://github.com/ErikAllanKincaid/tetron-webu
 3. Once installed, the row gets a **Configure** button. Clicking it opens a panel where you can add or remove shared folders, add or remove allowed devices (by name from your mesh network's device list, or by typing an address), and start or stop the service.
 
 Everything in that panel does exactly the same thing as the command-line tool above -- it's just a point-and-click way to do it.
+
+## License
+
+MPL-2.0 licensed. It contains no code from the phone app -- it only writes a plain `rsync` daemon configuration file and runs the system's own `rsync` program, the same tool countless backup and mirroring scripts have used for decades.
