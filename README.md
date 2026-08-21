@@ -1,39 +1,37 @@
 # tetron-sync-receiver
 
-Headless, CLI-first home-side rsync receiver for
-[tetron-mobile-sync](https://github.com/ErikAllanKincaid/tetron-mobile-sync)
-(the GPL-3.0 Android photo-backup addon for the
-[tetron](https://github.com/ErikAllanKincaid/tetron) mesh). MPL-2.0, same
-license as `tetron-webui`/`tetron-systray` -- it embeds no GPL code, only
-generates `rsyncd.conf` and supervises the system's own stock
-`rsync --daemon`.
+A small program that turns a home computer into a photo backup
+destination for [tetron-mobile-sync](https://github.com/ErikAllanKincaid/tetron-mobile-sync),
+an Android app that backs up your phone's camera roll to a computer you
+own over the [tetron](https://github.com/ErikAllanKincaid/tetron) mesh
+network. This is the piece that runs on the receiving computer.
 
-Status: built and manually verified end to end (real `systemd --user`
-service, real rsync transfer, real `tetron-webui` integration). Tagged
-`v0.11.0`; no published GitHub release yet (Actions has not run on this
-repo -- check Settings -> Actions before relying on
-`install-tetron-suite.sh --install-sync-receiver`, which needs a real
-release to fetch). Until then, install from source (below).
+It runs in the background, accepts incoming transfers only from devices
+you've explicitly allowed, and organizes what it shares into named
+folders. Nothing is reachable from the phone until you tell it what to
+share and who is allowed to connect.
 
-## What it does
+MPL-2.0 licensed. It contains no code from the phone app -- it only
+writes a plain `rsync` daemon configuration file and runs the system's own
+`rsync` program, the same tool countless backup and mirroring scripts have
+used for decades.
 
-- Runs as a per-user service (`systemd --user` on Linux, a launchd
-  LaunchAgent on macOS) -- no root needed to *run* it, only to place the
-  binary in `/usr/local/bin` alongside `tetron`/`tetron-webui`/
-  `tetron-systray`.
-- Manages its own `rsyncd.conf`: modules (name -> path) and a mesh-IP
-  allow-list, both editable live with no restart -- rsync's daemon
-  re-reads its config on every new connection, confirmed in practice, not
-  just in theory.
-- Talks to the local `tetron` daemon directly over `tetron-proto`'s IPC
-  socket to resolve a peer's mesh IP by hostname (`allow add-peer`) -- no
-  dependency on `tetron-webui` being installed or running.
-- Denies every connection by default (`hosts deny = *`) until at least one
-  IP is explicitly allowed.
+## How it works
+
+- It runs as a background service on your computer (no terminal window
+  needs to stay open).
+- You expose one or more folders as **modules** -- a module is just a name
+  paired with a folder path (e.g. a module called `photos` pointing at
+  `/home/you/Pictures/phone-backup`).
+- You **allow** specific devices to connect, either by picking them from
+  your mesh network's device list by name, or by typing in their address
+  directly. Nothing else can connect -- every other connection is refused.
+- Changes to modules or allowed devices take effect immediately, with no
+  need to restart anything.
 
 ## Installing
 
-**From source** (until a GitHub release exists):
+Build and install the binary:
 
 ```
 git clone https://github.com/ErikAllanKincaid/tetron-sync-receiver
@@ -42,87 +40,79 @@ cargo build --release
 sudo install -m 0755 target/release/tetron-sync-receiver /usr/local/bin/tetron-sync-receiver
 ```
 
-**Once a release exists**, via the suite installer (tetron core repo) --
-`sync-receiver` is opt-in, never installed by default:
-
-```
-curl -fsSL https://raw.githubusercontent.com/ErikAllanKincaid/tetron/main/contrib/install-tetron-suite.sh \
-  | bash -s -- --install-sync-receiver
-```
-
-Either way, the binary alone does nothing until you also register and
-start the per-user service:
+Then register and start the background service:
 
 ```
 tetron-sync-receiver install --port 8873
 ```
 
-`--port` must be >1024 -- this process never runs as root, so it can
-never bind a privileged port. `install` writes/enables the `systemd
---user` unit (or launchd LaunchAgent), starts it, and waits for the port
-to actually come up before printing success.
+You can pick a different port if you like -- anything above 1024 works,
+since this program never needs administrator/root privileges to run.
 
-## Using it
+## Using the command line
 
-Nothing is reachable yet at this point -- no modules, no allowed IPs.
-Two things to configure:
+Right after installing, nothing is shared and nothing is allowed to
+connect. Set up a folder to share and a device allowed to reach it:
 
 ```
-# Expose a directory as an rsync module (name -> path):
-tetron-sync-receiver module add photos /home/user/Pictures/phone-backup
+# Share a folder under the name "photos"
+tetron-sync-receiver module add photos /home/you/Pictures/phone-backup
 
-# Allow a phone by its mesh hostname (resolved via the local tetron
-# daemon's own peer roster -- no need to know or copy its IP by hand):
+# Allow a device by its name on the mesh network
 tetron-sync-receiver allow add-peer my-phone
 
-# ...or allow a raw IP directly, if you'd rather not depend on the local
-# tetron daemon being reachable:
+# ...or allow it by address directly, if you prefer
 tetron-sync-receiver allow add 10.88.0.42
 ```
 
-Both take effect immediately -- no restart needed. Check on things any time:
+Check on things at any time:
 
 ```
-tetron-sync-receiver receiver status       # running? port? module/allow counts?
+tetron-sync-receiver receiver status   # is it running? what port? how many folders/devices?
 tetron-sync-receiver module list
 tetron-sync-receiver allow list
 ```
 
-Add `--json` before any subcommand for machine-readable output (one
-global flag, works everywhere -- e.g. `tetron-sync-receiver --json
-receiver status`). Start/stop the already-installed service without
-touching its registration:
+Remove a folder or a device:
+
+```
+tetron-sync-receiver module remove photos
+tetron-sync-receiver allow remove 10.88.0.42
+```
+
+Start or stop the service without undoing your setup:
 
 ```
 tetron-sync-receiver receiver disable
 tetron-sync-receiver receiver enable
 ```
 
-Remove things with `module remove <name>` / `allow remove <ip>`. Tear the
-whole service down with `tetron-sync-receiver uninstall`.
+Remove everything, including the background service:
 
-## tetron-webui integration
+```
+tetron-sync-receiver uninstall
+```
 
-If [`tetron-webui`](https://github.com/ErikAllanKincaid/tetron-webui) is
-also installed, its Add-ons panel gets a **Sync Receiver** row:
+Add `--json` right after `tetron-sync-receiver` on any command for
+machine-readable output, e.g. `tetron-sync-receiver --json receiver
+status`.
 
-- **Not installed yet**: clicking the row's button shows the exact
-  terminal command to run (webui never has root, so it can't place the
-  binary itself -- same as every other release-binary addon).
-- **Installed**: the row shows an Install/Uninstall toggle plus a
-  **Configure** button. Configure opens a live panel with:
-  - a **Modules** table (add/remove, same as `module add`/`remove`),
-  - an **Allowed mesh IPs** table (add by peer hostname or raw IP,
-    remove -- same as `allow add`/`add-peer`/`remove`),
-  - a **Start/Stop** toggle (same as `receiver enable`/`disable`).
+## Using the web dashboard (tetron-webui)
 
-Every action in that panel is webui shelling out to this binary's own
-`--json` CLI (`src/sync_receiver.rs` on the webui side) -- webui never
-reimplements any `rsyncd.conf`/module/allow-list logic itself. The CLI
-above is the single source of truth either way; the panel is just a
-convenience for people who'd rather click than type.
+If you also run [`tetron-webui`](https://github.com/ErikAllanKincaid/tetron-webui)
+(a browser dashboard for the mesh network), you can do all of the above
+by clicking instead of typing:
 
-## Design record
+1. Open the webui's Add-ons page. You'll see a **Sync Receiver** entry.
+2. If it isn't installed yet, the row shows the exact command to run in a
+   terminal (the dashboard can't install software on your computer for
+   you -- you run that one command once).
+3. Once installed, the row gets a **Configure** button. Clicking it opens
+   a panel where you can:
+   - add or remove shared folders,
+   - add or remove allowed devices (by name from your mesh network's
+     device list, or by typing an address),
+   - start or stop the service.
 
-`DO-NOT-COMMIT/PLAN_tetron-sync-receiver_2026-08-21.md` (gitignored, local
-only) has the full design history and decisions.
+Everything in that panel does exactly the same thing as the command-line
+tool above -- it's just a point-and-click way to do it.
