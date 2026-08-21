@@ -1,33 +1,17 @@
 # tetron-sync-receiver
 
-A small program that turns a home computer into a photo backup
-destination for [tetron-mobile-sync](https://github.com/ErikAllanKincaid/tetron-mobile-sync),
-an Android app that backs up your phone's camera roll to a computer you
-own over the [tetron](https://github.com/ErikAllanKincaid/tetron) mesh
-network. This is the piece that runs on the receiving computer.
+A small program that turns a home computer into a photo backup destination for [tetron-mobile-sync](https://github.com/ErikAllanKincaid/tetron-mobile-sync), an Android app that backs up your phone's camera roll to a computer you own over the [tetron](https://github.com/ErikAllanKincaid/tetron) mesh network. This is the piece that runs on the receiving computer.
 
-It runs in the background, accepts incoming transfers only from devices
-you've explicitly allowed, and organizes what it shares into named
-folders. Nothing is reachable from the phone until you tell it what to
-share and who is allowed to connect.
+It runs in the background, accepts incoming transfers only from devices you've explicitly allowed, and organizes what it shares into named folders. Nothing is reachable from the phone until you tell it what to share and who is allowed to connect.
 
-MPL-2.0 licensed. It contains no code from the phone app -- it only
-writes a plain `rsync` daemon configuration file and runs the system's own
-`rsync` program, the same tool countless backup and mirroring scripts have
-used for decades.
+MPL-2.0 licensed. It contains no code from the phone app -- it only writes a plain `rsync` daemon configuration file and runs the system's own `rsync` program, the same tool countless backup and mirroring scripts have used for decades.
 
 ## How it works
 
-- It runs as a background service on your computer (no terminal window
-  needs to stay open).
-- You expose one or more folders as **modules** -- a module is just a name
-  paired with a folder path (e.g. a module called `photos` pointing at
-  `/home/you/Pictures/phone-backup`).
-- You **allow** specific devices to connect, either by picking them from
-  your mesh network's device list by name, or by typing in their address
-  directly. Nothing else can connect -- every other connection is refused.
-- Changes to modules or allowed devices take effect immediately, with no
-  need to restart anything.
+- It runs as a background service on your computer (no terminal window needs to stay open).
+- You expose one or more folders as **modules** -- a module is just a name paired with a folder path (e.g. a module called `photos` pointing at `/home/you/Pictures/phone-backup`).
+- You **allow** specific devices to connect, either by picking them from your mesh network's device list by name, or by typing in their address directly. Nothing else can connect -- every other connection is refused.
+- Changes to modules or allowed devices take effect immediately, with no need to restart anything.
 
 ## Installing
 
@@ -46,13 +30,11 @@ Then register and start the background service:
 tetron-sync-receiver install --port 8873
 ```
 
-You can pick a different port if you like -- anything above 1024 works,
-since this program never needs administrator/root privileges to run.
+You can pick a different port if you like -- anything above 1024 works, since this program never needs administrator/root privileges to run.
 
 ## Using the command line
 
-Right after installing, nothing is shared and nothing is allowed to
-connect. Set up a folder to share and a device allowed to reach it:
+Right after installing, nothing is shared and nothing is allowed to connect. Set up a folder to share and a device allowed to reach it:
 
 ```
 # Share a folder under the name "photos"
@@ -93,26 +75,14 @@ Remove everything, including the background service:
 tetron-sync-receiver uninstall
 ```
 
-Add `--json` right after `tetron-sync-receiver` on any command for
-machine-readable output, e.g. `tetron-sync-receiver --json receiver
-status`.
+Add `--json` right after `tetron-sync-receiver` on any command for machine-readable output, e.g. `tetron-sync-receiver --json receiver status`.
 
 ## Using the web dashboard (tetron-webui)
 
-If you also run [`tetron-webui`](https://github.com/ErikAllanKincaid/tetron-webui)
-(a browser dashboard for the mesh network), you can do all of the above
-by clicking instead of typing:
+If you also run [`tetron-webui`](https://github.com/ErikAllanKincaid/tetron-webui) (a browser dashboard for the mesh network), you can do all of the above by clicking instead of typing:
 
 1. Open the webui's Add-ons page. You'll see a **Sync Receiver** entry.
-2. If it isn't installed yet, the row shows the exact command to run in a
-   terminal (the dashboard can't install software on your computer for
-   you -- you run that one command once).
-3. Once installed, the row gets a **Configure** button. Clicking it opens
-   a panel where you can:
-   - add or remove shared folders,
-   - add or remove allowed devices (by name from your mesh network's
-     device list, or by typing an address),
-   - start or stop the service.
+2. If it isn't installed yet, the row shows the exact command to run in a terminal (the dashboard can't install software on your computer for you -- you run that one command once).
+3. Once installed, the row gets a **Configure** button. Clicking it opens a panel where you can add or remove shared folders, add or remove allowed devices (by name from your mesh network's device list, or by typing an address), and start or stop the service.
 
-Everything in that panel does exactly the same thing as the command-line
-tool above -- it's just a point-and-click way to do it.
+Everything in that panel does exactly the same thing as the command-line tool above -- it's just a point-and-click way to do it.
