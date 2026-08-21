@@ -1,0 +1,12 @@
+[Unit]
+Description=tetron-sync-receiver home-side rsync receiver
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/tetron-sync-receiver run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
