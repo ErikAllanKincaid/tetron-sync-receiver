@@ -33,7 +33,7 @@ sudo install -m 0755 target/release/tetron-sync-receiver /usr/local/bin/tetron-s
 Then register and start the background service:
 
 ```
-tetron-sync-receiver install --port 8873
+tetron-sync-receiver install --port 28873
 ```
 
 You can pick a different port if you like -- anything above 1024 works, since this program never needs administrator/root privileges to run.

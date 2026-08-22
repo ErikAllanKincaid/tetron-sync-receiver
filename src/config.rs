@@ -23,8 +23,13 @@ use serde::{Deserialize, Serialize};
 
 /// Default port: derived from rsync's own standard port 873, shifted into
 /// the non-privileged range (>1024) so this never needs root to bind it --
-/// the whole point of running as a per-user service.
-pub const DEFAULT_PORT: u16 = 8873;
+/// the whole point of running as a per-user service. Not 8873 (an earlier
+/// choice) -- the 8000-9000 range is heavily squatted by common dev tools
+/// (django runserver 8000, various http-server/proxy defaults 8080,
+/// Jupyter 8888, etc.), so 28873 sits clear of that range and of the Linux
+/// ephemeral port range (`net.ipv4.ip_local_port_range`, typically
+/// 32768-60999) while keeping the same "873" mnemonic.
+pub const DEFAULT_PORT: u16 = 28873;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Module {
