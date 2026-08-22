@@ -96,6 +96,12 @@ enum ReceiverCmd {
     Disable,
     /// Report whether the service is running, plus a config summary
     Status,
+    /// Change the port, restarting the service if it's currently running
+    /// (unlike module/allow edits, a port change can't take effect without
+    /// a restart -- the port is a command-line argument to the supervised
+    /// `rsync --daemon` process, not something inside rsyncd.conf it
+    /// re-reads per connection)
+    Port { port: u16 },
 }
 
 #[derive(Subcommand)]
@@ -178,6 +184,12 @@ fn run_receiver_cmd(cmd: ReceiverCmd) -> anyhow::Result<()> {
                 println!("modules: {}", state.modules.len());
                 println!("allowed IPs: {}", state.allow.len());
             }
+        }
+        ReceiverCmd::Port { port } => {
+            let mut state = config::load()?;
+            state.port = port;
+            config::save(&state)?;
+            service::restart_if_active()?;
         }
     }
     Ok(())

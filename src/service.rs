@@ -189,6 +189,23 @@ pub fn stop() -> Result<()> {
     Ok(())
 }
 
+/// After a config change that needs the running daemon to pick it up (a
+/// port change; module/allow edits do not, since rsync's daemon re-reads
+/// `rsyncd.conf` on every new connection) -- restart if active, otherwise
+/// leave it alone (an installed-but-stopped service should stay stopped).
+pub fn restart_if_active() -> Result<()> {
+    if is_active() {
+        #[cfg(target_os = "linux")]
+        run_cmd("systemctl", &["--user", "restart", "tetron-sync-receiver"]);
+        #[cfg(target_os = "macos")]
+        {
+            stop()?;
+            start()?;
+        }
+    }
+    Ok(())
+}
+
 fn wait_for_port(port: u16, timeout: Duration) -> bool {
     let addr = format!("127.0.0.1:{port}");
     let deadline = Instant::now() + timeout;
