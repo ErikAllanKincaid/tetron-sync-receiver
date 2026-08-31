@@ -195,10 +195,42 @@ fn run_receiver_cmd(cmd: ReceiverCmd) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// A module name becomes an `[name]` section header in `rsyncd.conf`, so it
+/// must be a single clean token.
+fn validate_module_name(name: String) -> anyhow::Result<String> {
+    let n = name.trim();
+    anyhow::ensure!(!n.is_empty(), "module name cannot be empty");
+    anyhow::ensure!(
+        !n.contains(['[', ']', '/', '\n', '\r', '\t', ' ']),
+        "module name '{n}' must be one word with no spaces, slashes or brackets"
+    );
+    Ok(n.to_string())
+}
+
+/// The module path becomes a `path = ...` line and is the root every push
+/// lands under. Require an absolute path (the daemon's working directory is
+/// not something the operator should have to reason about), reject a newline
+/// (it would corrupt the generated file), and create the directory if it is
+/// missing so the first transfer does not fail with a confusing daemon-side
+/// error. The client creates the per-device subdirectories itself.
+fn validate_module_path(path: String) -> anyhow::Result<String> {
+    anyhow::ensure!(
+        !path.contains(['\n', '\r']),
+        "module path cannot contain a newline"
+    );
+    let p = std::path::Path::new(&path);
+    anyhow::ensure!(p.is_absolute(), "module path must be absolute, got '{path}'");
+    std::fs::create_dir_all(p)
+        .map_err(|e| anyhow::anyhow!("failed to create module directory {path}: {e}"))?;
+    Ok(path)
+}
+
 fn run_module_cmd(cmd: ModuleCmd) -> anyhow::Result<()> {
     let mut state = config::load()?;
     match cmd {
         ModuleCmd::Add { name, path } => {
+            let name = validate_module_name(name)?;
+            let path = validate_module_path(path)?;
             state.modules.retain(|m| m.name != name);
             state.modules.push(config::Module { name, path });
             config::save(&state)?;
