@@ -31,6 +31,13 @@ use serde::{Deserialize, Serialize};
 /// 32768-60999) while keeping the same "873" mnemonic.
 pub const DEFAULT_PORT: u16 = 28873;
 
+/// Default module name. The phone (`tetron-mobile-sync`) uses this exact
+/// name unless an advanced user overrides it on both sides, so it must be a
+/// fixed, coordinated constant -- like [`DEFAULT_PORT`], a value that has to
+/// match on the receiver and every phone or the connection fails. Not
+/// `photos`: the module token is not a folder and not photo-specific.
+pub const DEFAULT_MODULE: &str = "tetron-sync";
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Module {
     pub name: String,
@@ -171,7 +178,7 @@ mod tests {
         State {
             port: DEFAULT_PORT,
             modules: vec![Module {
-                name: "photos".into(),
+                name: DEFAULT_MODULE.into(),
                 path: "/home/you/Pictures/phone-backup".into(),
             }],
             allow: vec!["10.88.0.42".into()],
@@ -190,7 +197,7 @@ mod tests {
     #[test]
     fn module_block_is_push_only_and_single_connection() {
         let conf = render(&sample());
-        assert!(conf.contains("[photos]\n"));
+        assert!(conf.contains("[tetron-sync]\n"));
         assert!(conf.contains("    path = /home/you/Pictures/phone-backup\n"));
         assert!(conf.contains("    read only = false\n"));
         assert!(conf.contains("    write only = true\n"));
