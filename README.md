@@ -8,6 +8,8 @@ It runs in the background, accepts incoming transfers only from devices you've e
 
 - It runs as a background service on your computer (no terminal window needs to stay open).
 - You expose one or more folders as **modules** -- a module is just a name paired with a folder path (e.g. a module called `photos` pointing at `/home/you/Pictures/phone-backup`).
+- Each phone writes into its own sub-folder of the module (`<module-path>/<device-label>/...`, where the phone app picks the label), so **one module can hold backups from several phones** -- you do not need a module per device. The phone creates that sub-folder itself; you only pick the module folder and allow the device.
+- A module accepts uploads only: a connected phone can push files but cannot list or download anything already there, and only one transfer at a time is accepted per module.
 - You **allow** specific devices to connect, either by picking them from your mesh network's device list by name, or by typing in their address directly. Nothing else can connect -- every other connection is refused.
 - Changes to modules or allowed devices take effect immediately, with no need to restart anything.
 
