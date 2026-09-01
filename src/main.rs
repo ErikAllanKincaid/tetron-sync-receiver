@@ -106,22 +106,37 @@ enum ReceiverCmd {
 
 #[derive(Subcommand)]
 enum ModuleCmd {
-    /// Add (or replace) a module
-    Add { name: String, path: String },
-    /// Remove a module by name
-    Remove { name: String },
+    /// Point the default module at a backup directory -- the one command a
+    /// normal setup runs. Creates the `tetron-sync` module if this receiver
+    /// has none, repoints it if it already exists. Any other (advanced,
+    /// renamed) module is left untouched.
+    SetDir { path: String },
+    /// Add (or replace) a module. Without `--name` this manages the default
+    /// `tetron-sync` module (same as `set-dir`); `--name` is for advanced
+    /// multi-module setups only and must be matched by the phone by hand.
+    Add {
+        #[arg(long, default_value_t = config::DEFAULT_MODULE.to_owned())]
+        name: String,
+        path: String,
+    },
+    /// Remove a module by name (defaults to the `tetron-sync` module)
+    Remove {
+        #[arg(default_value_t = config::DEFAULT_MODULE.to_owned())]
+        name: String,
+    },
     /// List configured modules
     List,
 }
 
 #[derive(Subcommand)]
 enum AllowCmd {
-    /// Allow a raw mesh IP -- always works, no local tetron daemon needed
-    Add { ip: String },
-    /// Allow a peer by hostname, resolved via the local tetron daemon's own
-    /// peer roster (IPC, not tetron-webui) -- this is the whole point of
-    /// being a standalone binary: the receiver already has this
-    /// information itself
+    /// Allow a peer by mesh IP or by hostname. A bare IP is stored directly
+    /// (always works, no local tetron daemon needed); anything else is
+    /// resolved as a hostname via the local tetron daemon's own peer roster
+    /// (IPC, not tetron-webui) -- the receiver already has this itself.
+    Add { value: String },
+    /// Deprecated: use `allow add <hostname>`. Kept one release as an alias.
+    #[command(hide = true)]
     AddPeer { hostname: String },
     /// Remove an allowed IP
     Remove { ip: String },
@@ -228,6 +243,13 @@ fn validate_module_path(path: String) -> anyhow::Result<String> {
 fn run_module_cmd(cmd: ModuleCmd) -> anyhow::Result<()> {
     let mut state = config::load()?;
     match cmd {
+        ModuleCmd::SetDir { path } => {
+            let name = config::DEFAULT_MODULE.to_string();
+            let path = validate_module_path(path)?;
+            state.modules.retain(|m| m.name != name);
+            state.modules.push(config::Module { name, path });
+            config::save(&state)?;
+        }
         ModuleCmd::Add { name, path } => {
             let name = validate_module_name(name)?;
             let path = validate_module_path(path)?;
@@ -259,10 +281,23 @@ fn run_module_cmd(cmd: ModuleCmd) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// `allow add` takes either form: a bare IP is stored as-is (no daemon
+/// needed), anything else is looked up as a mesh hostname. Keeps the webui
+/// and CLI down to one "address" field instead of two.
+async fn resolve_allow_value(value: &str) -> anyhow::Result<String> {
+    let v = value.trim();
+    if v.parse::<std::net::IpAddr>().is_ok() {
+        Ok(v.to_string())
+    } else {
+        roster::resolve_hostname(v).await
+    }
+}
+
 async fn run_allow_cmd(cmd: AllowCmd) -> anyhow::Result<()> {
     let mut state = config::load()?;
     match cmd {
-        AllowCmd::Add { ip } => {
+        AllowCmd::Add { value } => {
+            let ip = resolve_allow_value(&value).await?;
             if !state.allow.contains(&ip) {
                 state.allow.push(ip);
             }
